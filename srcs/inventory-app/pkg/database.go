@@ -1,11 +1,11 @@
 package pkg
 
 import (
-	"context"
 	"fmt"
-	"os"
+	"inventory-app/internal/model"
 
-	"github.com/jackc/pgx/v5/pgxpool"
+	"gorm.io/driver/postgres"
+	"gorm.io/gorm"
 )
 
 type Database struct {
@@ -26,27 +26,20 @@ func NewDatabase(addr, port, user, pass, name string) *Database {
 	}
 }
 
-func (db *Database) Connect() *pgxpool.Pool {
+func (db *Database) Connect() *gorm.DB {
 	address := fmt.Sprintf("postgres://%s:%s@%s:%s/%s",
 		db.DBUser, db.DBPass, db.DBAddr, db.DBPort, db.DBName)
 
-	pool, err := pgxpool.New(context.Background(), address)
+	database, err := gorm.Open(postgres.Open(address), &gorm.Config{})
 	if err != nil {
-		println(fmt.Fprintf(os.Stderr, "Unable to create connection pool: %v\n", err))
-		os.Exit(1)
+		panic(err)
 	}
 
-	_, err = pool.Exec(context.Background(), `
-		CREATE TABLE IF NOT EXISTS movies (
-			id SERIAL PRIMARY KEY,
-			title VARCHAR(255) NOT NULL,
-			description TEXT
-		)
-	`)
+	err = database.AutoMigrate(model.Movie{})
 	if err != nil {
-		println(fmt.Fprintf(os.Stderr, "Unable to create table: %v\n", err))
-		os.Exit(1)
+		panic(err)
 	}
 
-	return pool
+	return database
+
 }

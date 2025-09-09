@@ -5,12 +5,12 @@ import (
 	"inventory-app/internal/routes"
 	"inventory-app/internal/services"
 
-	"github.com/jackc/pgx/v5/pgxpool"
+	"gorm.io/gorm"
 )
 
 type App struct {
 	// Dependency
-	DB *pgxpool.Pool
+	DB *gorm.DB
 
 	//Services
 
@@ -19,7 +19,7 @@ type App struct {
 	Handlers *handlers.Handler
 }
 
-func NewApp(db *pgxpool.Pool) *App {
+func NewApp(db *gorm.DB) *App {
 	s := services.NewService(db)
 	h := handlers.NewHandler(s)
 	r := routes.NewRoutes(h)

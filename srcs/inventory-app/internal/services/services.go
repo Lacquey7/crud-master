@@ -1,12 +1,14 @@
 package services
 
-import "github.com/jackc/pgx/v5/pgxpool"
+import (
+	"gorm.io/gorm"
+)
 
 type Service struct {
-	db *pgxpool.Pool
+	db *gorm.DB
 }
 
-func NewService(db *pgxpool.Pool) *Service {
+func NewService(db *gorm.DB) *Service {
 	return &Service{
 		db: db,
 	}
