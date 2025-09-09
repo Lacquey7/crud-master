@@ -25,13 +25,13 @@ func (routes *Routes) Router(r *mux.Router) {
 	// Create a new movie.
 	prefix.HandleFunc("", routes.Handlers.CreateMovies()).Methods("POST")
 
-	//TODO:  delete all movies in the database.
+	//delete all movies in the database.
 	prefix.HandleFunc("", routes.Handlers.DeleteAllMovies()).Methods("DELETE")
 
-	//TODO: retrieve a single movie by id.
+	//retrieve a single movie by id.
 	prefix.HandleFunc("/{id}", routes.Handlers.GetMovie()).Methods("GET")
 
-	//TODO: update a single movie by id.
+	//update a single movie by id.
 	prefix.HandleFunc("/{id}", routes.Handlers.UpdateMovie()).Methods("PUT")
 
 	//TODO: delete a single movie by id.
