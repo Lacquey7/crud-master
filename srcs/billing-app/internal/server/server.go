@@ -8,34 +8,27 @@ import (
 )
 
 type Server struct {
-	Address string
+	Addr    string
 	Port    string
-	Router  http.Handler
+	Handler http.Handler
 }
 
-// New crée une nouvelle instance de Server avec les paramètres fournis
-func New(address, port string, router http.Handler) *Server {
+func NewServer(addr, port string, handler http.Handler) *Server {
 	return &Server{
-		Address: address,
+		Addr:    addr,
 		Port:    port,
-		Router:  router,
+		Handler: handler,
 	}
 }
 
-// Run lance le serveur avec des paramètres avancés
-func (s *Server) Run() error {
-	addr := fmt.Sprintf("%s:%s", s.Address, s.Port)
-
-	// Configuration avancée du serveur HTTP
-	httpServer := &http.Server{
-		Addr:              addr,
-		Handler:           s.Router,
-		ReadHeaderTimeout: 10 * time.Second,
-		WriteTimeout:      10 * time.Second,
-		IdleTimeout:       120 * time.Second,
-		MaxHeaderBytes:    1 << 20, // 1 Mo
+func (s *Server) Start() {
+	server := &http.Server{
+		Addr:           fmt.Sprintf("%s:%s", s.Addr, s.Port),
+		Handler:        s.Handler,
+		ReadTimeout:    10 * time.Second,
+		WriteTimeout:   10 * time.Second,
+		MaxHeaderBytes: 1 << 20,
 	}
 
-	log.Printf("Démarrage du serveur sur http://%s", addr)
-	return httpServer.ListenAndServe()
+	log.Fatal(server.ListenAndServe())
 }
