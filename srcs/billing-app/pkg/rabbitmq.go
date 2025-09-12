@@ -40,12 +40,12 @@ func (rmq *RabbitMQ) Connect() {
 	defer ch.Close()
 
 	q, err := ch.QueueDeclare(
-		"hello", // name
-		false,   // durable
-		false,   // delete when unused
-		false,   // exclusive
-		false,   // no-wait
-		nil,     // arguments
+		"billing", // name
+		false,     // durable
+		false,     // delete when unused
+		false,     // exclusive
+		false,     // no-wait
+		nil,       // arguments
 	)
 	failOnError(err, "Failed to declare a queue")
 

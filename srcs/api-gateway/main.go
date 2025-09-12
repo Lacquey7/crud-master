@@ -1,51 +1,77 @@
 package main
 
 import (
-	"crypto/rand"
-	"encoding/hex"
+	"api-gateway/pkg"
 	"fmt"
-	"time"
+	"io"
+	"net/http"
+	"net/http/httputil"
+	_ "net/http/httputil"
+	"net/url"
 )
 
-const tokenLength = 32 // 256 bits
-
-func generateSecureToken() (string, error) {
-	bytes := make([]byte, tokenLength)
-	_, err := rand.Read(bytes)
-	if err != nil {
-		return "", err
-	}
-	return hex.EncodeToString(bytes), nil
-}
-
 func main() {
-	targetToken := "8ad493e7e180e481efa4d282f412ad4a67ebddc516646219b40ff26341176535" // token cible
+	cfg := NewConfig()
 
-	attempt := 0
-	start := time.Now()
+	mq := pkg.NewRabbitMQ(cfg.MqAddr, cfg.MqPort, cfg.MqUser, cfg.MqPass)
 
-	for {
-		attempt++
-		token, err := generateSecureToken()
-		if err != nil {
-			fmt.Println("Erreur génération token:", err)
-			break
+	inventory := fmt.Sprintf("http://%s:%s", cfg.InventoryAddr, cfg.InventoryPort)
+	billing := fmt.Sprintf("http://%s:%s", cfg.BillingAddr, cfg.BillingPort)
+
+	inventoryURL, err := url.Parse(inventory)
+	if err != nil {
+		panic(err)
+	}
+
+	billingURL, err := url.Parse(billing)
+	if err != nil {
+		panic(err)
+	}
+
+	handlerInventory := func(p *httputil.ReverseProxy) func(w http.ResponseWriter, r *http.Request) {
+		return func(w http.ResponseWriter, r *http.Request) {
+			r.URL.Host = inventoryURL.Host
+			r.URL.Scheme = inventoryURL.Scheme
+			r.Host = inventoryURL.Host
+			p.ServeHTTP(w, r)
 		}
+	}
 
-		if token == targetToken {
-			fmt.Printf("Token trouvé après %d tentatives en %v !\n", attempt, time.Since(start))
-			break
-		}
+	handlerBilling := func(p *httputil.ReverseProxy) func(w http.ResponseWriter, r *http.Request) {
+		return func(w http.ResponseWriter, r *http.Request) {
+			if r.Method == http.MethodPost {
+				b, err := io.ReadAll(r.Body)
+				if err != nil {
+					http.Error(w, err.Error(), http.StatusBadRequest)
+					return
+				}
+				r.Body.Close()
 
-		// Affiche une mise à jour toutes les 100 000 tentatives
-		if attempt%100000000 == 0 {
-			fmt.Printf("Tentatives: %d - Temps écoulé: %v\n", attempt, time.Since(start))
-		}
+				mq.SendToQueue(b)
 
-		// Limite max de tentatives pour ne pas tourner indéfiniment
-		if attempt >= 1000000000 {
-			fmt.Println("Limite de 100 million de tentatives atteinte, arrêt du programme")
-			break
+				w.WriteHeader(http.StatusOK)
+				return
+			}
+
+			// 4) Proxy vers billing
+			r.URL.Host = billingURL.Host
+			r.URL.Scheme = billingURL.Scheme
+			r.Host = billingURL.Host
+			p.ServeHTTP(w, r)
 		}
+	}
+	proxyInventory := httputil.NewSingleHostReverseProxy(inventoryURL)
+
+	http.HandleFunc("/api/movies", handlerInventory(proxyInventory))
+	http.HandleFunc("/api/movies/", handlerInventory(proxyInventory))
+
+	proxyBilling := httputil.NewSingleHostReverseProxy(billingURL)
+	
+	http.HandleFunc("/api/billing", handlerBilling(proxyBilling))
+	http.HandleFunc("/api/billing/", handlerBilling(proxyBilling))
+
+	err = http.ListenAndServe(fmt.Sprintf("%s:%s", cfg.Addr, cfg.Port), nil)
+	if err != nil {
+		panic(err)
 	}
 }

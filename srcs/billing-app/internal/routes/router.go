@@ -17,7 +17,7 @@ func NewRoutes(h *handlers.Handler) *Routes {
 }
 
 func (routes *Routes) Router(r *mux.Router) {
-	prefix := r.PathPrefix("/api/").Subrouter()
+	prefix := r.PathPrefix("/api/billing").Subrouter()
 
 	prefix.HandleFunc("/{id}", routes.Handlers.GetBillingById()).Methods("GET")
 }
